@@ -39,7 +39,19 @@ Zhongzhong Xu
 	- we don't have to comment everything, but if the section you write seems complicated, please add some comment.
 	- It will be useful to follow the practice in "Best pracice for Python", you can look at only Naming section. The most important part is keep the variable naming convention consistuent.
 5. Feel free to add any other suggestion~~
-	
+
+
+Updates on Mar.30 - Milestone1. Part1:
+1. Required package: 
+    (1) "tmdbsimple", install by "pip install tmdbsimple“. More information can be found: https://github.com/celiao/tmdbsimple
+    (2) "imdbpy", install by "pip install imdbpy". More inforamtion can be found: http://imdbpy.sourceforge.net/
+    (3) Additional relevant API information: TMDB API: https://www.themoviedb.org/documentation/api
+    (4) TMDB API KEY = "71e259894a515060876bab2a33d6bdc9"
+2. Special Instructions:
+    Please see the "Notes" section in the milestone1 ipython-notebook. It includes how to access movie information
+    from IMDB and TMDB using different search/discover criteria.
+
+    Since the latest TMDB movie id is 449744, API has limited access 40 requests/10 seconds, we will need around 31 hours to get all movie information. I didn't get all the movie information at my step, but I'wrote an example showing how to get movie information for TMDB id from 1 to 20 (skipped non-existing ids). At this point, we can use the methods from "Note" section to get partial movies we are interested in. After we decides what attributes are useful for the project, we can spend 31 hours to get all movies. 
 
 
 
