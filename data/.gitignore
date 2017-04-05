@@ -1,1 +1,6 @@
 .DS_Store
+drv_tmdb_movie_details_test.json
+drv_tmdb_movie_details_bkp.json
+drv_tmdb_movie_details.json
+drv_imdb_movie_details_bkp.json
+drv_imdb_movie_details.json
