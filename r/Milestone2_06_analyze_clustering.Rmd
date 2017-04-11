@@ -1,0 +1,419 @@
+---
+title: "CS 109B: Final Project - Milestone 2: "
+subtitle: "April 6, 2017"
+output: html_document
+author: "Chrystal CHan"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+set.seed(109) # Set seed for random number generator
+
+#load packages
+library(ggplot2)
+library(dplyr)
+
+library(cluster)
+library(factoextra)
+library(mclust)
+library(corrplot)
+library(dbscan)
+library(MASS)
+library(ggfortify)
+library(NbClust)
+
+library(caret)
+library('e1071')
+
+```
+
+# Load Data
+
+```{r}
+# load data
+data.df <- read.csv(file ="C:/Users/Chrystal/Documents/School/CS109b - Copy/movie_project/data/imdb_imputed_processed.csv")
+
+```
+
+# Clustering
+
+
+```{r}
+col.df <- as.data.frame(colnames(data.df))
+
+```
+
+
+```{r}
+#from
+data.val = data.df[,c('imdb_id', 'tmdb_id')]
+# certificate R to cast 4
+data.val = cbind(data.val,data.df[,36:64])
+
+# rescale
+# data.scaled = scale(data.val)
+data.scaled = data.val
+```
+
+
+(a) 2D-scaling
+```{r}
+# Compute Euclidean pairwise distances
+dist.eucl = daisy(data.val, metric = "euclidean", stand = T)
+
+# heat map
+fviz_dist(dist.eucl,
+   gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+```
+
+
+```{r}
+# MDS scaling
+dist.mds <- cmdscale(dist.eucl, k =2)
+dist.mds <- as.data.frame(dist.mds)
+
+ggplot(dist.mds,aes(x=V1,y=V2)) + geom_point() + geom_density2d()+ ggtitle("2D scaling of pair-wise distiance")
+ggplot(dist.mds,aes(x=V1,y=V2)) + geom_point()  + geom_label(aes(label = rownames(dist.mds),x=V1,y=V2))
+``` 
+
+```{r}
+data.pca <- prcomp(data.scaled)
+data.pca.df <- data.pca$x
+ggplot(data.pca.df,aes(x=PC1,y=PC2)) + geom_point()  + geom_density2d()+ ggtitle("First 2 PC of gene expression")
+
+```
+
+
+
+(b)  **Kmeans** (PAM) 
+```{r}
+# method 1
+# Gap statistic
+gapstat = clusGap(data.scaled ,FUN=kmeans,nstart=25,K.max=10,B=500,d.power = 2)
+print(gapstat, method="Tibs2001SEmax")
+fviz_gap_stat(gapstat, 
+  maxSE=list(method="Tibs2001SEmax",SE.factor=1)) + 
+  ggtitle("K-means clustering for votes - optimal number of clusters") 
+
+# method 2
+# elbow plots
+fviz_nbclust(data.scaled, kmeans, method="wss",nstart=25) + 
+  ggtitle("K-means clustering for votes - optimal number of clusters") +
+  geom_vline(xintercept=3,linetype=2)
+
+# method 3
+# average silhouette widths
+fviz_nbclust(data.scaled,kmeans,method="silhouette",nstart=25) +
+  ggtitle("K-means clustering for votes - optimal number of clusters") 
+
+```
+
+```{r}
+cluster <- 3
+data.km = kmeans(data.scaled, cluster, nstart = 25)
+print(data.km)
+print(aggregate(data.df, by=list(cluster=data.km$cluster), mean))
+
+fviz_cluster(data.km, data = data.scaled,
+  main="K-means clustering of votes")
+
+
+```
+
+```{r}
+# silhouette plot
+silhouette.km
+fviz_silhouette(silhouette(data.pam), label = TRUE,
+  main="Silhouette plot for PAM clustering")+ theme(axis.text.x = element_text(size=8, angle=90))
+
+```
+
+
+(c)  **Partitioning around medoids** (PAM) 
+
+```{r}
+# PAM
+# find optimal cluster
+# method 1
+# Gap statistic
+gapstat = clusGap(data.scaled,FUN=pam,K.max=10,B=500)
+print(gapstat, method="Tibs2001SEmax")
+fviz_gap_stat(gapstat,
+  maxSE=list(method="Tibs2001SEmax",SE.factor=1)) + 
+  ggtitle("PAM clustering for gene expression - optimal number of clusters") 
+
+# method 2
+# elbow plots
+fviz_nbclust(data.scaled, pam, method="wss") + 
+  ggtitle("PAM clustering for gene expression- optimal number of clusters") +
+  geom_vline(xintercept=2,linetype=2)
+
+# method 3
+# average silhouette widths
+fviz_nbclust(data.scaled,pam,method="silhouette") +
+  ggtitle("PAM clustering for gene expression - optimal number of clusters") 
+
+```
+
+```{r}
+# PC plot
+cluster <- 2
+
+data.pam = pam(data.scaled, k=cluster)
+#print(data.pam)
+
+fviz_cluster(data.pam, # don't need to specify data for pam
+  main="PAM clustering of gene expression")
+
+```
+
+```{r}
+# silhouette plot
+fviz_silhouette(silhouette(data.pam), label = TRUE,
+  main="Silhouette plot for PAM clustering")+ theme(axis.text.x = element_text(size=8, angle=90))
+#silhouette(data.pam)
+```
+
+
+(d) **Agglomerative clustering** (AGNES) 
+
+```{r}
+agnes.reformat<-function(x, k){
+# x: Data matrix or frame, k: Number of clusters
+  x.agnes = agnes(x,method="ward",stand=T)
+  x.cluster = list(cluster=cutree(x.agnes,k=k))
+  return(x.cluster)
+}
+
+```
+
+```{r}
+# AGNES
+data.agnes = agnes(data.scaled,method="ward",stand=T)
+pltree(data.agnes, cex=0.5, hang= -1,
+  main="AGNES fit (Ward's method) of gene expression",
+  xlab="State",sub="")
+
+# method 1
+# Gap statistic
+
+gapstat = clusGap(data.scaled ,FUN=agnes.reformat,K.max=10,B=500)
+print(gapstat, method="Tibs2001SEmax")
+fviz_gap_stat(gapstat, 
+  maxSE=list(method="Tibs2001SEmax",SE.factor=1)) + 
+  ggtitle("AGNES clustering for gene expression - optimal number of clusters") 
+
+
+# method 2
+# elbow plots
+fviz_nbclust(data.scaled,agnes.reformat,method="wss") +
+  ggtitle("AGNES clustering for gene expression - optimal number of clusters")  +
+  geom_vline(xintercept=2,linetype=2)
+
+# method 3
+# average silhouette widths
+fviz_nbclust(data.scaled,agnes.reformat,method="silhouette") +
+  ggtitle("PAM clustering for gene expression - optimal number of clusters") 
+
+```
+
+```{r}
+# 
+cluster <-2
+
+
+pltree(data.agnes, cex=0.5, hang= -1,
+  main="AGNES fit (Ward's method) of gene expression",
+  xlab="State",sub="")
+rect.hclust(data.agnes,k=cluster,border=2:5)
+```
+
+```{r}
+# PC plot
+grp.agnes = cutree(data.agnes, k = cluster)
+fviz_cluster(list(data = data.scaled, cluster = grp.agnes), main = "AGNES clustering for gene expression - optimal number of clusters")
+```
+
+```{r}
+# silhouette plot
+
+silhouette.agnes <- silhouette(agnes.reformat(data.scaled,cluster)$cluster, dist(data.scaled) )
+rownames(silhouette.agnes) <-rownames(data.df)
+silhouette.agnes
+fviz_silhouette(silhouette.agnes, label = TRUE,
+  main="Silhouette plot for AGNES clustering")+ theme(axis.text.x = element_text(size=8, angle=90))
+
+```
+
+
+(e) DINANA
+
+```{r}
+diana.reformat<-function(x, k){
+# x: Data matrix or frame, k: Number of clusters
+  x.diana = diana(x,stand=T)
+  x.cluster = list(cluster=cutree(x.diana,k=k))
+  return(x.cluster)
+}
+
+```
+
+```{r}
+# diana
+data.diana = diana(data.scaled,stand=T)
+pltree(data.diana, cex=0.5, hang= -1,
+  main="DIANA fit of gene expression",
+  xlab="State",sub="")
+
+# method 1
+# Gap statistic
+
+gapstat = clusGap(data.scaled ,FUN=diana.reformat,K.max=10,B=500)
+print(gapstat, method="Tibs2001SEmax")
+fviz_gap_stat(gapstat, 
+  maxSE=list(method="Tibs2001SEmax",SE.factor=1)) + 
+  ggtitle("DIANA clustering for gene expression - optimal number of clusters") 
+
+
+# method 2
+# elbow plots
+fviz_nbclust(data.scaled,diana.reformat,method="wss") +
+  ggtitle("DIANA clustering for gene expression - optimal number of clusters")  +
+  geom_vline(xintercept=2,linetype=2)
+
+# method 3
+# average silhouette widths
+fviz_nbclust(data.scaled,diana.reformat,method="silhouette") +
+  ggtitle("DIANA clustering for gene expression - optimal number of clusters") 
+
+```
+
+```{r}
+# 
+cluster <-2
+
+
+pltree(data.diana, cex=0.5, hang= -1,
+  main="DIANA fit of gene expression",
+  xlab="State",sub="")
+rect.hclust(data.diana,k=cluster,border=2:5)
+```
+
+```{r}
+# PC plot
+grp.diana = cutree(data.diana, k = cluster)
+fviz_cluster(list(data = data.scaled, cluster = grp.diana), main = "DIANA clustering for gene expression - optimal number of clusters")
+```
+
+```{r}
+# silhouette plot
+
+silhouette.diana <- silhouette(diana.reformat(data.scaled,cluster)$cluster, dist(data.scaled) )
+rownames(silhouette.diana) <-rownames(data.df)
+silhouette.diana
+fviz_silhouette(silhouette.diana, label = TRUE,
+  main="Silhouette plot for DIANA clustering")+ theme(axis.text.x = element_text(size=8, angle=90))
+
+```
+
+(f)  **Fuzzy clustering** (FANNY) 
+```{r}
+fanny.reformat<-function(x, k){
+# x: Data matrix or frame, k: Number of clusters
+  return(fanny(x,k,memb.exp =1.1, maxit = 5000 ))
+}
+```
+
+```{r, Warning = FALSE}
+# method 1
+# gap statistics
+gapstat = clusGap(data.scaled ,FUN=fanny.reformat,K.max=10,B=100)
+print(gapstat, method="Tibs2001SEmax")
+fviz_gap_stat(gapstat, 
+  maxSE=list(method="Tibs2001SEmax",SE.factor=1)) + 
+  ggtitle("Fuzzy clustering for gene expression - optimal number of clusters") 
+
+
+```
+```{r, Warning = FALSE}
+
+# method 2
+# elbow plots
+fviz_nbclust(data.scaled,fanny,method="wss") +
+  ggtitle("Fuzzy clustering for gene expression - optimal number of clusters")  +
+  geom_vline(xintercept=2,linetype=2)
+
+# method 3
+# average silhouette
+fviz_nbclust(data.scaled,fanny,method="silhouette" )+
+  ggtitle("Fuzzy clustering for gene expression - optimal number of clusters")  
+```
+
+```{r}
+cluster <- 2
+# Fuzzy clustering - fanny
+data.fanny = fanny(data.scaled,k=cluster,memb.exp =1.1, maxit = 5000)
+
+# estimated probability for an observation to be in each cluster
+print(round(data.fanny$membership,2))
+# correlation plot
+corrplot(data.fanny$membership, is.corr=F,tl.cex = 0.5)
+
+#patients have over 90% of probability in cluster 1
+sum(data.fanny$membership[,1] > 0.9)/nrow(data.df)
+#patients have over 90% of probability in cluster 2
+sum(data.fanny$membership[,2] > 0.9)/nrow(data.df)
+
+# PCA plot
+fviz_cluster(data.fanny,
+  main="Fuzzy clustering for gene expression - optimal number of clusters")
+
+# silhouette plot
+silhouette.fanny <- silhouette(data.fanny, data.scaled)
+fviz_silhouette(silhouette.agnes, label = TRUE,
+  main="Silhouette plot for Fuzzy clustering")+ theme(axis.text.x = element_text(size=8, angle=90))
+```
+
+
+
+
+
+(g) Density-based clustering
+
+```{r}
+kNNdistplot(data.scaled,k=5)
+abline(2.2,0,lty=2,lwd=2,col="red") # added after seeing kNN plot
+#knees around 2.2
+
+data.db = dbscan(data.scaled, eps=2.2, minPts = 5)
+fviz_cluster(data.db, data.scaled, stand = FALSE, ellipse.type = "convex", geom = "point") +
+  ggtitle("DBSCAN clustering of multishape data with eps=2.2 and minPts=5")
+
+data.db.df <- as.data.frame(data.db$cluster)
+data.db.df$state<- rownames(data.df)
+colnames(data.db.df)[1] <- "cluster"
+
+#outliers
+data.db.df %>%
+  filter(cluster == 0)
+
+```
+
+
+```{r}
+new.df<- data.df[,1:4]
+new.df$cluster <- data.pam$clustering
+new.df$ALL.AML <- as.character(new.df$ALL.AML)
+new.df$Gender <- as.character(new.df$Gender)
+new.df$BM.PB <- as.character(new.df$BM.PB)
+
+cluster.df <- new.df%>% group_by(cluster) %>% summarise(cluster_num = n()) 
+#
+new.df%>% group_by(cluster, ALL.AML) %>% summarise( n = n()) %>% inner_join(cluster.df) %>% mutate(percent = n/cluster_num)
+new.df%>% group_by(cluster, Gender) %>% summarise( n = n()) %>% inner_join(cluster.df) %>% mutate(percent = n/cluster_num)
+new.df%>% group_by(cluster, BM.PB) %>% summarise( n = n()) %>% inner_join(cluster.df) %>% mutate(percent = n/cluster_num)
+```
+
+

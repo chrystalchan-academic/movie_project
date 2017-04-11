@@ -23,3 +23,8 @@ http://imdbpy.sourceforge.net/docs/README.package.txt
 	- Whenever you want to load more data, please run Milestone1_02_store_data_tmdb.ipynb then run Milestone1_02_store_data_imdb.ipynb. It is best not to run in Milestone1.ipynb so you can continue to work. 
 	- Somehow we only load 1% of the data for TMDB for the id range we intended to load.
 	- Also, when we load IMDB, throwing exception does not help to ignore data for invalid movid id, it will just crash.
+	
+###  Updates on Apr.11 - Milestone2:
+1. Add load tmdb file and r code for clsutering
+2. Special instructions:
+please download imdb_imputed_process.csv from google drive to run the r code.
