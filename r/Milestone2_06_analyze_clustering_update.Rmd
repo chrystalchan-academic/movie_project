@@ -1,0 +1,206 @@
+---
+title: "CS 109B: Final Project - Milestone 2: "
+subtitle: "April 6, 2017"
+output: html_document
+---
+
+```{r,warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+set.seed(109) # Set seed for random number generator
+#load packages
+library(ggplot2)
+library(dplyr)
+library(cluster)
+library(factoextra)
+library(mclust)
+library(corrplot)
+library(dbscan)
+library(MASS)
+library(ggfortify)
+library(NbClust)
+library(caret)
+library('e1071')
+library(tidyr)
+```
+
+# Question: What does your choice of Y look like?
+
+In IMDB data set, we have total 28 genres.However, it has been observared that some of these gernes show a high correlation. For instance, Thriller movie trend to associate closely with horror movie. Also, many genres also very small number of movies, using clustering method helps us in reducing the number of genres. In specific, we intend to perform clustering on closely related genres (based on avialable attributes), so that we will end up with grouping together movie genres which show high similarity in terms of movie attributes. After clustering, we will have certain number of clusters, we assign the top combination of genres as the response variable for each cluster. For example, the most popular multiple-label genre for cluster1 is Romance and Drama, then we will regard the movies in cluster 1 have genres Romance and Drame.  
+
+# Load Data
+
+```{r}
+# load data
+data.df <- read.csv("C:/Users/cheriexu/Downloads/CS109B/imdb_imputed_byRF_for_cluster_with_response.csv")
+
+#since most columns are categorical (dummy coding will be too many columns), 
+#we used the relative frequency for later clustering
+relative_req <- function(x){
+  if(class(x) == "numeric"){
+    tab <- table(x)/nrow(data.val)
+    ind <- match(x, as.numeric(names(tab)))
+    unname(tab[ind])
+  }
+  else{
+    x <- as.character(x)
+    tab <- table(x)/nrow(data.val)
+    ind <- match(x, as.character(names(tab)))
+    unname(tab[ind])
+  }
+}
+```
+
+# Clustering
+
+Considering we will have more than 200,000 movies in the whole data set, we would like to choose clustering methods that are suitable for very large data sets. (The following three clustering method were covered in the lectures, so we won't explain them in details here).
+
+K-means: able to handle very large data set; good for general-purpose; not very uneven cluster size; will not have too many clusters.
+
+PAM: less suitable for very large data set; minimize the average dissimilarity of objects to their closest selected object.
+
+DBSCAN: able to handle very large data set; usually generate uneven cluster sizes
+
+We would like to compare the performance of clustering based on their silhouette plot and whether the number of observations in clusters is reasonable. 
+
+```{r}
+#convert all categorical variables to relative frequency
+data.val <- data.df %>% dplyr::select(c(1:32)) %>% mutate('certificate' = ifelse(certificates_R == 1, "R", ifelse(certificates_PG == 1, "PG","None")))
+data.val[,'certificate'] <- relative_req(data.val[,'certificate'])
+data.val[,4:ncol(data.val)] <- scale(data.val[,4:ncol(data.val)], center = F)
+data.scaled <- data.val[,4:ncol(data.val)]
+head(data.scaled)
+```
+
+**Kmeans** 
+```{r}
+#choose optimal number of clusters
+
+# elbow plots
+fviz_nbclust(data.scaled, kmeans,iter.max=30, method="wss", nstart = 5) + 
+  ggtitle("K-means clustering  - optimal number of clusters") +
+  geom_vline(xintercept=5, linetype=2)
+
+# average silhouette widths
+fviz_nbclust(data.scaled, kmeans,method="silhouette", nstart = 5) +
+  ggtitle("K-means clustering  - optimal number of clusters") 
+
+``` 
+
+```{r}
+cluster <- 5
+data.km <- kmeans(data.scaled, cluster, nstart = 5)
+
+```
+
+```{r}
+# silhouette plot
+sil_kmeans <- silhouette(data.km$cluster, dist = daisy(data.scaled))
+fviz_silhouette(sil_kmeans) + ggtitle("silhouette plot for the kmeans clustering")
+
+```
+
+
+ **Partitioning around medoids** (PAM) 
+
+```{r}
+# PAM
+# find optimal cluster
+
+# elbow plots
+fviz_nbclust(data.scaled, pam, method="wss") + 
+  ggtitle("PAM clustering - optimal number of clusters") +
+  geom_vline(xintercept=6,linetype=2)
+
+# average silhouette widths
+fviz_nbclust(data.scaled,pam,method="silhouette") +
+  ggtitle("PAM clustering - optimal number of clusters") 
+
+```
+
+```{r}
+cluster <- 6
+data.pam = pam(data.scaled, k=cluster)
+
+```
+
+```{r}
+# silhouette plot
+fviz_silhouette(silhouette(data.pam), 
+  main="Silhouette plot for PAM clustering")
+
+```
+
+
+ Density-based clustering
+
+```{r}
+kNNdistplot(data.scaled,k=3)
+abline(3.0,0,lty=2,lwd=2,col="red") # added after seeing kNN plot
+#knees around 3.0
+
+data.db = dbscan(data.scaled, eps=3, minPts = 3)
+
+data.db.df <- as.data.frame(data.db$cluster)
+table(data.db.df)
+colnames(data.db.df)[1] <- "cluster"
+
+#outliers
+data.db.df %>%
+  filter(cluster == 0)
+```
+
+
+# Clustering comparison:
+
+Since we would like to compare the performance of clustering based on their silhouette plot and whether the number of observations in clusters is reasonable, K-means out-performs PAM based on silhouette plot, and K-means gives much more reasonable number of observations in each cluster. Although the cluster distributin in K-means is still imbalanced (as we would expected), it is in a reasonable range. However, for the result we get from DBSCAN, we usually ends up with one cluster with too many observations than a reasonable expection (even choosing different parameters). Thus, we would like use K-means as the final clustering methods to generate response variables.
+
+
+# Process response variable from clustering result:
+
+We proposed two methods to process response variables
+
+(1) In each cluster, compute the occurance of each individual genres, then choose top three genres from then. Combine the top three genres as the new label for the cluster. For example, the top three populat genres in cluster 1 are Romance, Drama and Action, then the new label for cluster 1 is Romance, Drama, Action, together as the respones variable. However, this processing has two drawbacks. The first one is that it is very likely more than one cluster having the same top three genres. Also, some genres are more popular than others in the whole data set, so it is still in the top three genres in each cluster.
+
+(2) Thus, we proposed an alternative solution, by choosing the top one genre combination for each cluster. It is very unlikely to have the same genre combination using this method, and it consistent with the results based on the clustering. The main goal of clustering is to merge some similar genres into others, by using this method, we can satisify our inital goal. 
+
+```{r}
+#(1) compute each cluster's top three genres 
+data.df <- data.df %>% dplyr::mutate(cluster_response = data.km$'cluster')
+for (i in 1:length(unique(data.df$cluster_response))){
+  df1 <- data.df %>% filter(cluster_response == i) %>% 
+    dplyr::select(c(Sci.Fi:Biography))
+  sort(colSums(df1))
+}
+
+genres <- colnames(data.df)[33:56]
+genre_list = c("Sci.Fi","Crime", "Romance", "Animation", "Music",
+"Adult", "Comedy", "War", "Horror", "Film.Noir", "Western", "Thriller",
+"Adventure","Mystery","Short", "Drama", "Action", "Documentary", "Musical","History","Family","Fantasy","Sport","Biography")
+data.df$genrecomb <- do.call(paste0, data.df[genre_list])
+
+#(2) compute each cluster's top one genre combination
+for (i in 1:length(unique(data.df$cluster_response))){
+  df2 <- data.df %>% tidyr::unite(col =genres, Sci.Fi:Biography, sep = ",")
+  df3 <- df2 %>% filter(cluster_response == i)
+  print(genre_list[strsplit(df2[which.max(relative_req(df3$genres)),'genres'],",")[[1]]=="1"])
+}
+
+```
+
+For our sample data, we end up with five clusters, and we figure out the genre combination for each cluster as following. Then we assign the result to the original data set.
+
+```{r}
+map <-data.frame(cluster_response = c(1:5), genres_comb = c("Horror, Thriller, Drama",
+                                                            "Romance, Music, Drama",
+                                                            "Animation, Comedy, Adventure, Family, Fantasy",
+                                                            "Romance, Comedy, Fantasy",
+                                                            "Horror, Thriller, Action"))
+```
+
+Output the original data set with new response variable as a csv file
+```{r}
+df5 <- left_join(data.df %>% dplyr::select(-ncol(data.df)), map, by = "cluster_response" )
+write.csv(x = df5, file = "imdb_cluster_result.csv",row.names = F)
+```
+
