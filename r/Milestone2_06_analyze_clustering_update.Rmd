@@ -26,7 +26,7 @@ library(tidyr)
 
 # Question: What does your choice of Y look like?
 
-In IMDB data set, we have total 28 genres.However, it has been observared that some of these gernes show a high correlation. For instance, Thriller movie trend to associate closely with horror movie. Also, many genres also very small number of movies, using clustering method helps us in reducing the number of genres. In specific, we intend to perform clustering on closely related genres (based on avialable attributes), so that we will end up with grouping together movie genres which show high similarity in terms of movie attributes. After clustering, we will have certain number of clusters, we assign the top combination of genres as the response variable for each cluster. For example, the most popular multiple-label genre for cluster1 is Romance and Drama, then we will regard the movies in cluster 1 have genres Romance and Drame.  
+In IMDB data set, we have total 28 genres. However, it has been observared that some of these gernes show a high correlation. For instance, Thriller movie trends to associate closely with Horror movie. Also, some genres have very small number of movies, using clustering method helps us in reducing the number of genres. In specific, we intend to perform clustering on closely related genres (based on avialable attributes), so that we will end up with grouping together movie genres which show high similarity based on movie attributes. After clustering, we will have certain number of clusters, then we assign the top combination of genres in each cluster as the response variable for that cluster. For example, if the most popular multiple-label genre for cluster1 is Romance, Drama and Action, then we will regard the movies in cluster 1 have genre label: Romance, Drama and Action.  
 
 # Load Data
 
@@ -53,7 +53,7 @@ relative_req <- function(x){
 
 # Clustering
 
-Considering we will have more than 200,000 movies in the whole data set, we would like to choose clustering methods that are suitable for very large data sets. (The following three clustering method were covered in the lectures, so we won't explain them in details here).
+Considering that we will have more than 200,000 movies in the whole data set, we would like to choose clustering methods that are suitable for very large data sets. (The following three clustering method were covered in the lectures, so we won't explain them in details here).
 
 K-means: able to handle very large data set; good for general-purpose; not very uneven cluster size; will not have too many clusters.
 
@@ -86,6 +86,8 @@ fviz_nbclust(data.scaled, kmeans,method="silhouette", nstart = 5) +
   ggtitle("K-means clustering  - optimal number of clusters") 
 
 ``` 
+
+Since the average silhouette widths give too few clusters, we will like to choose the optimal number of clusters basde on the elbow plots.
 
 ```{r}
 cluster <- 5
@@ -160,9 +162,9 @@ Since we would like to compare the performance of clustering based on their silh
 
 We proposed two methods to process response variables
 
-(1) In each cluster, compute the occurance of each individual genres, then choose top three genres from then. Combine the top three genres as the new label for the cluster. For example, the top three populat genres in cluster 1 are Romance, Drama and Action, then the new label for cluster 1 is Romance, Drama, Action, together as the respones variable. However, this processing has two drawbacks. The first one is that it is very likely more than one cluster having the same top three genres. Also, some genres are more popular than others in the whole data set, so it is still in the top three genres in each cluster.
+(1) In each cluster, compute the occurance of each individual genre, then choose top three genres from them. Combine the top three genres from each cluster as the new label for that cluster. For example, the top three populat genres in cluster 1 are Romance, Drama and Action, then the new label for cluster 1 is Romance, Drama, Action, together as the respones variable. However, this processing has two drawbacks. The first one is that it is very likely more than one cluster having the same top three genres. Also, some genres are more popular than others in the whole data set, so it will be more likely to be in the top three genres in each cluster.
 
-(2) Thus, we proposed an alternative solution, by choosing the top one genre combination for each cluster. It is very unlikely to have the same genre combination using this method, and it consistent with the results based on the clustering. The main goal of clustering is to merge some similar genres into others, by using this method, we can satisify our inital goal. 
+(2) Thus, we proposed an alternative solution, by choosing the top one genre combination from each cluster as the response variable. It is very unlikely to have the same genre combination for different clusters using this method, and it will be consistent with the results based on the clustering. The main goal of clustering is to merge some similar genres into others, by using this method, we can satisify our inital goal. 
 
 ```{r}
 #(1) compute each cluster's top three genres 
