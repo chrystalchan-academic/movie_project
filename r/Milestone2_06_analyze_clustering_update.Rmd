@@ -193,16 +193,17 @@ for (i in 1:length(unique(data.df$cluster_response))){
 For our sample data, we end up with five clusters, and we figure out the genre combination for each cluster as following. Then we assign the result to the original data set.
 
 ```{r}
-map <-data.frame(cluster_response = c(1:5), genres_comb = c("Horror, Thriller, Drama",
-                                                            "Romance, Music, Drama",
-                                                            "Animation, Comedy, Adventure, Family, Fantasy",
-                                                            "Romance, Comedy, Fantasy",
-                                                            "Horror, Thriller, Action"))
+map <-data.frame(cluster_response = c(1:5), genres_comb = c('"Horror", "Thriller", "Drama"',
+                                                            '"Romance", "Music", "Drama"',
+                                                            '"Animation", "Comedy", "Adventure", "Family", "Fantasy"',
+                                                            '"Romance", "Comedy", "Fantasy"',
+                                                            '"Horror", "Thriller", "Action"'))
 ```
 
 Output the original data set with new response variable as a csv file
 ```{r}
 df5 <- left_join(data.df %>% dplyr::select(-ncol(data.df)), map, by = "cluster_response" )
+#df5 <- left_join(data.df, map, by = "cluster_response" )
 write.csv(x = df5, file = "imdb_cluster_result.csv",row.names = F)
 ```
 
