@@ -1,5 +1,6 @@
 .DS_Store
 *.json
+*.csv
 drv_tmdb_movie_details_test.json
 drv_tmdb_movie_details_bkp.json
 drv_tmdb_movie_details.json
