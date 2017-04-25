@@ -1,0 +1,32 @@
+---
+title: "RecodeY"
+output: pdf_document
+---
+
+```{r}
+library(tidyr)
+library(dplyr)
+recode_y <- read.csv("C:/Users/cheriexu/Downloads/whole_data.csv")
+
+cluster1_prob <- rowSums(recode_y %>% select(c(Romance, War, Musical, Sport)))/4
+cluster2_prob <- rowSums(recode_y %>% select(c(Horror, Thriller)))/2
+cluster3_prob <- rowSums(recode_y %>% select(c(News, Short, Documentary,History, Biography)))/5
+cluster4_prob <- rowSums(recode_y %>% select(c(Comedy,Drama)))/2
+cluster5_prob <- rowSums(recode_y %>% select(c(Sci.Fi,Animation,Music,Adult,Reality.TV,Adventure,Talk.Show,Family,Fantasy,Game.Show)))/10
+cluster6_prob <- rowSums(recode_y %>% select(c(Crime,Film.Noir,Western,Mystery)))/4
+cluster7_prob <- rowSums(recode_y %>% select(Action))
+
+cluster_prob <- cbind(cluster1_prob,cluster2_prob,cluster3_prob,cluster4_prob,cluster5_prob,cluster6_prob,cluster7_prob )
+
+recoded_y <- apply(cluster_prob,MARGIN=1,which.max)
+recode_y <- recode_y %>% mutate(recoded_y = recoded_y)
+
+mat <- as.matrix(recode_y)
+
+y_only <- recode_y %>% select(tmdb_id, recoded_y)
+mat2 <- as.matrix(y_only)
+
+write.csv(mat, file = "whole_data_recodedyonly.csv")
+write.csv(mat2, file = "whole_data_yonly.csv")
+```
+
