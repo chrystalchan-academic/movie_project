@@ -1,0 +1,58 @@
+---
+title: "Missing Value Analysis"
+author: "Yufei Gui"
+date: "4/4/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd('/Users/Victoria_G/Desktop/CS109B/proj/movie_project')
+
+```
+
+```{r}
+#load data
+dat<- read.csv('imdb_raw.csv')
+
+# change all the empty cell to NA form
+dat[dat==""]<-NA
+
+dat<- data.frame(dat)
+
+# number of the total observations and columns
+nrow(dat)
+ncol(dat)
+
+# explore the type of the input variables
+variables<-split(names(dat),sapply(dat, function(x) paste(class(x), collapse=" ")))
+variables
+summary(variables)
+
+# explore missing rate of each variables
+
+# define a function of explore the missing rate
+propmiss <- function(dataframe) {
+	m <- sapply(dataframe, function(x) {
+		data.frame(
+			nmiss=sum(is.na(x)), 
+			n=length(x), 
+			propmiss=sum(is.na(x))/length(x)
+		)
+	})
+	d <- data.frame(t(m))
+	d <- sapply(d, unlist)
+	d <- as.data.frame(d)
+	d$variable <- row.names(d)
+	row.names(d) <- NULL
+	d <- cbind(d[ncol(d)],d[-ncol(d)])
+	return(d[order(d$propmiss), ])
+}
+
+# missing rate for the train set
+propmiss(dat)
+
+```
+
